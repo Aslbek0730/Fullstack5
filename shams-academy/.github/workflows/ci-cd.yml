@@ -1,0 +1,62 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: shams_academy
+        ports:
+          - 5432:5432
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run migrations
+        run: |
+          cd backend
+          python manage.py migrate
+
+      - name: Run tests
+        run: |
+          cd backend
+          python manage.py test
+
+      - name: Build Docker images
+        run: |
+          docker-compose -f backend/docker-compose.yml build
+          docker-compose -f frontend/docker-compose.yml build
+
+      - name: Push Docker images
+        run: |
+          docker-compose -f backend/docker-compose.yml push
+          docker-compose -f frontend/docker-compose.yml push
+
+volumes:
+  postgres_data: {}
